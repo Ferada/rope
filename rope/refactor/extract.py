@@ -670,7 +670,25 @@ class _FunctionInformationCollector(object):
         self._handle_conditional_node(node)
 
     def _For(self, node):
-        self._handle_conditional_node(node)
+        self.conditional = True
+        try:
+            for child in node.body:
+                ast.walk(child, self)
+
+            # variables of the for loop
+            target = _VariableReadsAndWritesFinder()
+            ast.walk(node.target, target)
+
+            # written if the loop body is executed
+            self.read.difference_update(target.written)
+
+            for child in node.orelse:
+                ast.walk(child, self)
+        finally:
+            self.conditional = False
+
+        # looped over, definitely read
+        ast.walk(node.iter, self)
 
 
 def _get_argnames(arguments):
